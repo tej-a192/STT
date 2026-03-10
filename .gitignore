@@ -1,0 +1,4 @@
+venv
+.env
+project_files.txt
+__pycache__

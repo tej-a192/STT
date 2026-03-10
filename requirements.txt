@@ -1,0 +1,5 @@
+deepgram-sdk
+pyaudio
+sqlalchemy
+psycopg2-binary
+python-dotenv
