@@ -1,6 +1,6 @@
 import requests
 
-DEEPGRAM_API_KEY = "9f65dad738baa6edcfad7d4a1a6b88b30c5bdaf9"
+DEEPGRAM_API_KEY = "PLACE_KEY"
 
 url = "https://api.deepgram.com/v1/listen?model=nova-3-general&detect_language=true"
 
