@@ -1,5 +1,8 @@
 import pyaudio
 import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Audio recording parameters
 RATE = 16000
@@ -21,22 +24,21 @@ def get_mic_stream():
     )
 
     async def mic_generator():
-        print("🎙️  Microphone started. Start speaking...")
+        logger.info("🎙️ Microphone started. Start speaking...")
         try:
             while True:
-                # Read audio data block
-                data = stream.read(CHUNK, exception_on_overflow=False)
+                # Run blocking PyAudio read in a separate thread so it doesn't freeze the async event loop
+                data = await asyncio.to_thread(stream.read, CHUNK, exception_on_overflow=False)
                 yield data
-                # Yield control to the event loop
                 await asyncio.sleep(0.001)
         except asyncio.CancelledError:
-            print("🎙️  Microphone stream cancelled.")
+            logger.info("🎙️ Microphone stream cancelled.")
         except Exception as e:
-            print(f"🎙️  Microphone error: {e}")
+            logger.error(f"🎙️ Microphone error: {e}", exc_info=True)
         finally:
             stream.stop_stream()
             stream.close()
             audio.terminate()
-            print("🎙️  Microphone stopped.")
+            logger.info("🎙️ Microphone stopped.")
 
     return mic_generator()
