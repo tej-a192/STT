@@ -38,8 +38,8 @@ class STTAgent:
                 model="nova-3", 
                 language=language_code,
                 smart_format=True,
-                endpointing=500,
-                utterance_end_ms="1000",
+                endpointing=300,   
+                utterance_end_ms="1200",
                 interim_results=True,
                 encoding="linear16",
                 sample_rate=16000,
@@ -79,18 +79,30 @@ class STTAgent:
                         pass
                         
                     if is_final:
-                        self.last_final_transcript = sentence
+                        # Append the chunk to our ongoing complete utterance buffer
+                        if self.last_final_transcript:
+                             self.last_final_transcript += f" {sentence}"
+                        else:
+                             self.last_final_transcript = sentence
+
                         print(f"Transcript : {sentence}")
                     
-                    if is_final or speech_final:
-                        if self.loop and not self.loop.is_closed():
-                            async def save_to_db(sid, txt):
-                                await asyncio.to_thread(self.session_tools.update_transcript, sid, txt, "en")
-                            
-                            asyncio.run_coroutine_threadsafe(
-                                save_to_db(self.session_id, sentence), 
-                                self.loop
-                            )
+                # If speech_final is true, Deepgram detected a pause. 
+                # This is our primary trigger to complete the utterance!
+                if speech_final and self.last_final_transcript:
+                    completed_utterance = self.last_final_transcript
+                    print(f"Final Transcript : {completed_utterance}")
+
+                    if self.loop and not self.loop.is_closed():
+                        async def save_to_db(sid, txt):
+                            await asyncio.to_thread(self.session_tools.update_transcript, sid, txt, "en")
+                        
+                        asyncio.run_coroutine_threadsafe(
+                            save_to_db(self.session_id, completed_utterance), 
+                            self.loop
+                        )
+
+                    self.last_final_transcript = ""
 
         except Exception as e:
             pass
@@ -99,8 +111,21 @@ class STTAgent:
         if not self.session_id:
             return
 
+        # UtteranceEnd acts as a fallback for noisy environments where
+        # endpointing/speech_final might fail to detect a pause.
         if self.last_final_transcript:
-            print(f"Final Transcript : {self.last_final_transcript}")
+            completed_utterance = self.last_final_transcript
+            print(f"Final Transcript (Fallback) : {completed_utterance}")
+
+            if self.loop and not self.loop.is_closed():
+                async def save_to_db(sid, txt):
+                    await asyncio.to_thread(self.session_tools.update_transcript, sid, txt, "en")
+                
+                asyncio.run_coroutine_threadsafe(
+                    save_to_db(self.session_id, completed_utterance), 
+                    self.loop
+                )
+
             self.last_final_transcript = ""
 
     def handle_error(self, connection, error, **kwargs):
