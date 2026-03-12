@@ -76,7 +76,6 @@ class STTAgent:
                 
                 if sentence.strip():
                     if not is_final and not speech_final:
-                        # Interim (optional depending on if manager strictly only wanted finals, but usually required for "live" feel)
                         pass
                         
                     if is_final:
